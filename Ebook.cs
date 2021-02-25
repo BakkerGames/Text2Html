@@ -67,17 +67,23 @@ namespace Text2Html
                     sectionText.Clear();
                     blankLines = 0;
                 }
+                // count blank lines, but don't add until needed
                 if (string.IsNullOrEmpty(line))
                 {
                     blankLines++;
                     continue;
                 }
+                // use Append('\n') instead of AppendLine(...) for better splitting
                 while (blankLines > 0)
                 {
-                    sectionText.AppendLine();
+                    sectionText.Append('\n');
                     blankLines--;
                 }
-                sectionText.AppendLine(line);
+                if (sectionText.Length > 0)
+                {
+                    sectionText.Append('\n');
+                }
+                sectionText.Append(line);
             }
             // add last section when done
             if (sectionText.Length > 0)
@@ -106,7 +112,11 @@ namespace Text2Html
                 {
                     sectionNumber++;
                     writer.WriteLine($"### SECTION {sectionNumber} ###");
-                    writer.Write(sectionText); // already ends with eol
+                    string[] sectionLines = sectionText.Split('\n');
+                    foreach (string line in sectionLines)
+                    {
+                        writer.WriteLine(line);
+                    }
                 }
             }
         }
