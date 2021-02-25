@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Text2Html": {
+      "commandName": "Project",
+      "commandLineArgs": "\"C:\\Books\\Temp\\Heinlein, Robert A - Farmer in the Sky.txt\""
+    }
+  }
+}
