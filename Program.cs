@@ -11,7 +11,7 @@ namespace Text2Html
                 Console.WriteLine(arg);
                 Ebook myBook = new Ebook();
                 myBook.LoadTextFile(arg);
-                myBook.SaveAsText("C:\\Temp\\Output.txt");
+                myBook.SaveAsText("C:\\Books\\Temp\\Output.txt");
             }
         }
     }

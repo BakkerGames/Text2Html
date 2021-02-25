@@ -106,7 +106,7 @@ namespace Text2Html
                 {
                     sectionNumber++;
                     writer.WriteLine($"### SECTION {sectionNumber} ###");
-                    writer.Write(sectionText); // already ends in eol
+                    writer.Write(sectionText); // already ends with eol
                 }
             }
         }
