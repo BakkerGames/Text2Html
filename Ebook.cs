@@ -57,15 +57,16 @@ namespace Text2Html
                         // add title page
                         sectionText.Clear();
                         sectionText.Append(":Title Page");
-                        string[] titleLines = _headerLine.
-                            Replace("---", "—").
-                            Replace("--", "—").
-                            Split('—');
-                        foreach (string titleLine in titleLines)
+                        string[] headerLinesSplit = _headerLine.
+                                                    Replace(" --- ", "—").
+                                                    Replace(" -- ", "—").
+                                                    Replace(" - ", "—").
+                                                    Split('—');
+                        foreach (string line1 in headerLinesSplit)
                         {
                             sectionText.Append("\n\n");
                             sectionText.Append("\t^^");
-                            sectionText.Append(titleLine.Trim());
+                            sectionText.Append(line1.Trim());
                         }
                         continue;
                     }
@@ -161,23 +162,21 @@ namespace Text2Html
                 {
                     Directory.CreateDirectory(pathname);
                 }
-            }
-            catch (Exception ex)
-            {
-                throw new SystemException($"Cannot create directory {pathname}\r\n{ex.Message}");
-            }
-            try
-            {
                 if (!Directory.Exists(_htmlFolderPath))
                 {
                     Directory.CreateDirectory(_htmlFolderPath);
                 }
+                if (!Directory.Exists(_htmlFolderPath + "\\_css"))
+                {
+                    Directory.CreateDirectory(_htmlFolderPath + "\\_css");
+                }
             }
             catch (Exception ex)
             {
-                throw new SystemException($"Cannot create directory {_htmlFolderPath}\r\n{ex.Message}");
+                throw new SystemException($"Cannot create directory\r\n{ex.Message}");
             }
             // build *.html table of contents document
+            int sectionNumber = 0;
             using (StreamWriter writer = File.CreateText(Path.Combine(_basePath, _htmlFolder + ".html")))
             {
                 writer.WriteLine("<html>");
@@ -186,12 +185,12 @@ namespace Text2Html
                 {
                     writer.WriteLine(line);
                 }
-                writer.WriteLine("<link href=\"_css\\ebookstyle.css\" rel=\"stylesheet\" type=\"text/css\">");
+                writer.WriteLine($"<link href={_htmlFolder}\\\"_css\\ebookstyle.css\" rel=\"stylesheet\" type=\"text/css\">");
                 writer.WriteLine("</head>");
                 writer.WriteLine("<body>");
                 writer.WriteLine("<h1>Table of Contents</h1>");
                 writer.WriteLine("<p style=\"text-indent:0pt\">");
-                int sectionNumber = 0;
+                sectionNumber = 0;
                 foreach (string sectionText in _sections)
                 {
                     string sectionTitle = sectionText.Substring(0, sectionText.IndexOf("\n"));
@@ -205,6 +204,30 @@ namespace Text2Html
                 writer.WriteLine("</p>");
                 writer.WriteLine("</body>");
                 writer.WriteLine("</html>");
+            }
+            sectionNumber = 0;
+            foreach (string sectionText in _sections)
+            {
+                using (StreamWriter writer = File.CreateText($"{_htmlFolderPath}\\part{sectionNumber:0000}.html"))
+                {
+                    writer.WriteLine("<html>");
+                    writer.WriteLine("<head>");
+                    foreach (string line in _metadata)
+                    {
+                        //TODO ### only write <title> line here
+                        // if (line.Contains("<title>"))
+                        // {
+                            writer.WriteLine(line);
+                        // }
+                    }
+                    writer.WriteLine("<link href=\"_css\\ebookstyle.css\" rel=\"stylesheet\" type=\"text/css\">");
+                    writer.WriteLine("</head>");
+                    writer.WriteLine("<body>");
+                    writer.Write(TransformText.ConvertText2Html(sectionText, sectionNumber));
+                    writer.WriteLine("</body>");
+                    writer.WriteLine("</html>");
+                    sectionNumber++;
+                }
             }
         }
 
