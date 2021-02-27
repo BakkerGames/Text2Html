@@ -1,10 +1,12 @@
-﻿using System.Text;
+﻿using System;
+using System.Collections.Generic;
+using System.Text;
 
 namespace Text2Html
 {
     public static class TransformText
     {
-        public static string ConvertText2Html(string source, int sectionNumber)
+        public static string ConvertText2Html(string source, int sectionNumber, List<Footnote> footnotes)
         {
             if (string.IsNullOrEmpty(source))
             {
@@ -49,13 +51,28 @@ namespace Text2Html
                 }
                 if (lineNumber == 0)
                 {
-                    lineNew = $"<h3>{lineNew}</h3>";
+                    if (lineNew.StartsWith(":"))
+                    {
+                        lineNew = $"<h6>{lineNew[1..]}</h6>";
+                    }
+                    else if (lineNew.StartsWith("+"))
+                    {
+                        lineNew = $"<h3>{lineNew[1..]}</h3>";
+                    }
+                    else
+                    {
+                        lineNew = $"<h3>{lineNew}</h3>";
+                    }
                     result.AppendLine(lineNew);
                     continue;
                 }
-                lineNew = lineNew[1..]; // remove \t
+                if (lineNew.StartsWith("\t"))
+                {
+                    lineNew = lineNew[1..];
+                }
                 lineNew = FixHtmlChars(lineNew);
                 lineNew = FixHtmlPatterns(lineNew);
+                lineNew = FixFootnotes(lineNew, footnotes);
                 if (lineNew == "***")
                 {
                     lineNew = $"&nbsp;</p><p class=\"scenebreak\">* * *</p><p>&nbsp;";
@@ -215,7 +232,75 @@ namespace Text2Html
             if (lineNew.Contains("\\'")) lineNew = lineNew.Replace("\\'", "'");
             if (lineNew.Contains("' \"")) lineNew = lineNew.Replace("' \"", "'&nbsp;\"");
             if (lineNew.Contains("\" '")) lineNew = lineNew.Replace("\" '", "\"&nbsp;'");
+            if (lineNew.Contains("&#0;")) lineNew = lineNew.Replace("&#0;", "");
+            if (lineNew.Contains("&#32;")) lineNew = lineNew.Replace("&#32;", " ");
+            if (lineNew.Contains("&#45;")) lineNew = lineNew.Replace("&#45;", "-");
             return lineNew;
         }
+
+        private static string FixFootnotes(string line, List<Footnote> footnotes)
+        {
+            string lineNew = line;
+            while (lineNew.Contains("<footnote"))
+            {
+                int pos2 = lineNew.IndexOf("<footnote");
+                int pos3 = lineNew.IndexOf("/>", pos2);
+                string tag = lineNew[(pos2 + "<footnote".Length)..pos3].Trim();
+                foreach (Footnote fn in footnotes)
+                {
+                    if (fn.FootnoteTag == tag)
+                    {
+                        if (fn.LinkSectionNumber == fn.TextSectionNumber)
+                        {
+                            lineNew = lineNew[0..pos2] +
+                                      $"<a id=\"fr{tag}\" href=\"#fn{tag}\">[{tag}]</a>" +
+                                      lineNew[(pos3 + 2)..];
+                        }
+                        else
+                        {
+                            lineNew = lineNew[0..pos2] +
+                                      $"<a id=\"fr{tag}\" href=\"#fn{tag}\">[{tag}]</a>" +
+                                      lineNew[(pos3 + 2)..];
+                            // TODO ### removed for testing, put back after full compare
+                            //lineNew = lineNew[0..pos2] +
+                            //          $"<a id=\"fr{tag}\" href=\"part{fn.TextSectionNumber:0000}.html#fn{tag}\">[{tag}]</a>" +
+                            //          lineNew[(pos3 + 2)..];
+                        }
+                        break;
+                    }
+                };
+            }
+            while (lineNew.Contains("<foottext"))
+            {
+                int pos2 = lineNew.IndexOf("<foottext");
+                int pos3 = lineNew.IndexOf("/>", pos2);
+                string tag = lineNew[(pos2 + "<foottext".Length)..pos3].Trim();
+                foreach (Footnote fn in footnotes)
+                {
+                    if (fn.FootnoteTag == tag)
+                    {
+                        if (fn.LinkSectionNumber == fn.TextSectionNumber)
+                        {
+                            lineNew = lineNew[0..pos2] +
+                                      $"<a id=\"fn{tag}\" href=\"#fr{tag}\">[{tag}]</a>" +
+                                      lineNew[(pos3 + 2)..];
+                        }
+                        else
+                        {
+                            lineNew = lineNew[0..pos2] +
+                                      $"<a id=\"fn{tag}\" href=\"#fr{tag}\">[{tag}]</a>" +
+                                      lineNew[(pos3 + 2)..];
+                            // TODO ### removed for testing, put back after full compare
+                            // lineNew = lineNew[0..pos2] +
+                            //           $"<a id=\"fn{tag}\" href=\"part{fn.LinkSectionNumber:0000}.html#fr{tag}\">[{tag}]</a>" +
+                            //           lineNew[(pos3 + 2)..];
+                        }
+                        break;
+                    }
+                };
+            }
+            return lineNew;
+        }
+
     }
 }

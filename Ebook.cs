@@ -16,6 +16,7 @@ namespace Text2Html
         private string _headerLine;
         private List<string> _metadata;
         private List<string> _sections;
+        private List<Footnote> _footnotes;
 
         public void LoadTextFile(string filename)
         {
@@ -37,6 +38,7 @@ namespace Text2Html
             // prepare storage locations
             _metadata = new List<string>();
             _sections = new List<string>();
+            _footnotes = new List<Footnote>();
             // load all file lines
             string[] lines = File.ReadAllLines(_filename);
             // split lines into sections
@@ -82,7 +84,9 @@ namespace Text2Html
                     inHeader = false;
                 }
                 // look for new section headings
-                if (!string.IsNullOrEmpty(line) && !line.StartsWith("\t"))
+                if (!string.IsNullOrEmpty(line) &&
+                    !line.StartsWith("\t") &&
+                    !line.StartsWith("<image"))
                 {
                     if (sectionText.Length > 0)
                     {
@@ -114,11 +118,8 @@ namespace Text2Html
             {
                 _sections.Add(sectionText.ToString());
             }
-        }
-
-        public void ConvertToHtml()
-        {
-            // TODO ### convert to html
+            // look for footnotes
+            _footnotes = FindFootnotes(_sections);
         }
 
         public void SaveAsText(string filename)
@@ -193,8 +194,17 @@ namespace Text2Html
                 sectionNumber = 0;
                 foreach (string sectionText in _sections)
                 {
-                    string sectionTitle = sectionText.Substring(0, sectionText.IndexOf("\n"));
-                    if (sectionTitle.StartsWith(":"))
+                    string sectionTitle;
+                    if (sectionText.Contains("\n"))
+                    {
+                        sectionTitle = sectionText[0..sectionText.IndexOf("\n")];
+                    }
+                    else
+                    {
+                        sectionTitle = sectionText;
+                    }
+                    if (sectionTitle.StartsWith(":") ||
+                        sectionTitle.StartsWith("+"))
                     {
                         sectionTitle = sectionTitle[1..];
                     }
@@ -217,18 +227,65 @@ namespace Text2Html
                         //TODO ### only write <title> line here
                         // if (line.Contains("<title>"))
                         // {
-                            writer.WriteLine(line);
+                        writer.WriteLine(line);
                         // }
                     }
                     writer.WriteLine("<link href=\"_css\\ebookstyle.css\" rel=\"stylesheet\" type=\"text/css\">");
                     writer.WriteLine("</head>");
                     writer.WriteLine("<body>");
-                    writer.Write(TransformText.ConvertText2Html(sectionText, sectionNumber));
+                    writer.Write(TransformText.ConvertText2Html(sectionText, sectionNumber, _footnotes));
                     writer.WriteLine("</body>");
                     writer.WriteLine("</html>");
                     sectionNumber++;
                 }
             }
+        }
+
+        private List<Footnote> FindFootnotes(List<string> sections)
+        {
+            List<Footnote> result = new List<Footnote>();
+            int sectionNumber = 0;
+            foreach (string sectionText in _sections)
+            {
+                int pos = 0;
+                while (sectionText.IndexOf("<footnote", pos) >= 0)
+                {
+                    int pos2 = sectionText.IndexOf("<footnote", pos);
+                    int pos3 = sectionText.IndexOf("/>", pos2);
+                    string tag = sectionText[(pos2 + "<footnote".Length)..pos3].Trim();
+                    Footnote fn = new Footnote
+                    {
+                        FootnoteTag = tag,
+                        LinkSectionNumber = sectionNumber,
+                        TextSectionNumber = -1
+                    };
+                    result.Add(fn);
+                    pos = pos3 + 2;
+                }
+                sectionNumber++;
+            }
+            sectionNumber = 0;
+            foreach (string sectionText in _sections)
+            {
+                int pos = 0;
+                while (sectionText.IndexOf("<foottext", pos) >= 0)
+                {
+                    int pos2 = sectionText.IndexOf("<foottext", pos);
+                    int pos3 = sectionText.IndexOf("/>", pos2);
+                    string tag = sectionText[(pos2 + "<foottext".Length)..pos3].Trim();
+                    foreach (Footnote fn in result)
+                    {
+                        if (fn.FootnoteTag == tag)
+                        {
+                            fn.TextSectionNumber = sectionNumber;
+                            break;
+                        }
+                    };
+                    pos = pos3 + 2;
+                }
+                sectionNumber++;
+            }
+            return result;
         }
 
         private static string GetHtmlFolderName(string baseFilename)
