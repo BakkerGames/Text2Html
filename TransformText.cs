@@ -1,12 +1,20 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Text;
 
 namespace Text2Html
 {
-    class TransformText
+    public static class TransformText
     {
+        public static string ConvertText2Html(string source)
+        {
+            if (string.IsNullOrEmpty(source))
+            {
+                return "";
+            }
+            StringBuilder result = new StringBuilder();
+
+            result.Append(source); //TODO ### for testing ###
+
+            return result.ToString();
+        }
     }
 }

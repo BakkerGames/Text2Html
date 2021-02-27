@@ -6,4 +6,12 @@
     <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
   </PropertyGroup>
 
+  <ItemGroup>
+    <None Remove="Resources\ebookstyle.css" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\ebookstyle.css" />
+  </ItemGroup>
+
 </Project>

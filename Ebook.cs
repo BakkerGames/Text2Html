@@ -8,6 +8,10 @@ namespace Text2Html
     public class Ebook
     {
         private string _filename;
+        private string _basePath;
+        private string _baseFilename;
+        private string _htmlFolder;
+        private string _htmlFolderPath;
 
         private string _headerLine;
         private List<string> _metadata;
@@ -25,6 +29,11 @@ namespace Text2Html
             }
             // save filename for later use
             _filename = filename;
+            _basePath = filename.Substring(0, _filename.LastIndexOf("\\"));
+            _baseFilename = filename.Substring(_filename.LastIndexOf("\\") + 1);
+            _baseFilename = _baseFilename.Substring(0, _baseFilename.LastIndexOf(".")); // remove extension
+            _htmlFolder = GetHtmlFolderName(_baseFilename);
+            _htmlFolderPath = Path.Combine(_basePath, _htmlFolder);
             // prepare storage locations
             _metadata = new List<string>();
             _sections = new List<string>();
@@ -35,6 +44,7 @@ namespace Text2Html
             int lineNumber = 0;
             int blankLines = 0;
             bool inHeader = true;
+            // add all sections/parts/chapters
             foreach (string line in lines)
             {
                 lineNumber++;
@@ -44,6 +54,19 @@ namespace Text2Html
                     {
                         // title - author [- series] - (year)
                         _headerLine = line;
+                        // add title page
+                        sectionText.Clear();
+                        sectionText.Append(":Title Page");
+                        string[] titleLines = _headerLine.
+                            Replace("---", "—").
+                            Replace("--", "—").
+                            Split('—');
+                        foreach (string titleLine in titleLines)
+                        {
+                            sectionText.Append("\n\n");
+                            sectionText.Append("\t^^");
+                            sectionText.Append(titleLine.Trim());
+                        }
                         continue;
                     }
                     if (string.IsNullOrEmpty(line))
@@ -92,6 +115,11 @@ namespace Text2Html
             }
         }
 
+        public void ConvertToHtml()
+        {
+            // TODO ### convert to html
+        }
+
         public void SaveAsText(string filename)
         {
             if (string.IsNullOrEmpty(filename))
@@ -110,15 +138,97 @@ namespace Text2Html
                 int sectionNumber = 0;
                 foreach (string sectionText in _sections)
                 {
-                    sectionNumber++;
                     writer.WriteLine($"### SECTION {sectionNumber} ###");
                     string[] sectionLines = sectionText.Split('\n');
                     foreach (string line in sectionLines)
                     {
                         writer.WriteLine(line);
                     }
+                    sectionNumber++;
                 }
             }
+        }
+
+        public void SaveAsHtml(string pathname)
+        {
+            if (string.IsNullOrEmpty(pathname))
+            {
+                throw new SystemException("Pathname is blank");
+            }
+            try
+            {
+                if (!Directory.Exists(pathname))
+                {
+                    Directory.CreateDirectory(pathname);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new SystemException($"Cannot create directory {pathname}\r\n{ex.Message}");
+            }
+            try
+            {
+                if (!Directory.Exists(_htmlFolderPath))
+                {
+                    Directory.CreateDirectory(_htmlFolderPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new SystemException($"Cannot create directory {_htmlFolderPath}\r\n{ex.Message}");
+            }
+            // build *.html table of contents document
+            using (StreamWriter writer = File.CreateText(Path.Combine(_basePath, _htmlFolder + ".html")))
+            {
+                writer.WriteLine("<html>");
+                writer.WriteLine("<head>");
+                foreach (string line in _metadata)
+                {
+                    writer.WriteLine(line);
+                }
+                writer.WriteLine("<link href=\"_css\\ebookstyle.css\" rel=\"stylesheet\" type=\"text/css\">");
+                writer.WriteLine("</head>");
+                writer.WriteLine("<body>");
+                writer.WriteLine("<h1>Table of Contents</h1>");
+                writer.WriteLine("<p style=\"text-indent:0pt\">");
+                int sectionNumber = 0;
+                foreach (string sectionText in _sections)
+                {
+                    string sectionTitle = sectionText.Substring(0, sectionText.IndexOf("\n"));
+                    if (sectionTitle.StartsWith(":"))
+                    {
+                        sectionTitle = sectionTitle[1..];
+                    }
+                    writer.WriteLine($"<a href=\"{_htmlFolder}\\part{sectionNumber:0000}.html\">{sectionTitle}</a><br/>");
+                    sectionNumber++;
+                }
+                writer.WriteLine("</p>");
+                writer.WriteLine("</body>");
+                writer.WriteLine("</html>");
+            }
+        }
+
+        private static string GetHtmlFolderName(string baseFilename)
+        {
+            StringBuilder result = new StringBuilder();
+            bool needUnderscore = false;
+            foreach (char c in baseFilename)
+            {
+                if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9'))
+                {
+                    if (needUnderscore)
+                    {
+                        result.Append('_');
+                    }
+                    result.Append(c);
+                    needUnderscore = false;
+                }
+                else if (result.Length > 0)
+                {
+                    needUnderscore = true;
+                }
+            }
+            return result.ToString();
         }
     }
 }
