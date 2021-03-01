@@ -11,11 +11,11 @@ namespace Text2Html
         private string _basePath;
         private string _baseFilename;
         private string _htmlFolder;
-        private string _htmlFolderPath;
 
         private string _headerLine;
         private List<string> _metadata;
         private List<string> _sections;
+        private List<ImageLink> _images;
         private List<Footnote> _footnotes;
 
         public void LoadTextFile(string filename)
@@ -33,11 +33,10 @@ namespace Text2Html
             _basePath = filename.Substring(0, _filename.LastIndexOf("\\"));
             _baseFilename = filename.Substring(_filename.LastIndexOf("\\") + 1);
             _baseFilename = _baseFilename.Substring(0, _baseFilename.LastIndexOf(".")); // remove extension
-            _htmlFolder = GetHtmlFolderName(_baseFilename);
-            _htmlFolderPath = Path.Combine(_basePath, _htmlFolder);
             // prepare storage locations
             _metadata = new List<string>();
             _sections = new List<string>();
+            _images = new List<ImageLink>();
             _footnotes = new List<Footnote>();
             // load all file lines
             string[] lines = File.ReadAllLines(_filename);
@@ -118,6 +117,8 @@ namespace Text2Html
             {
                 _sections.Add(sectionText.ToString());
             }
+            // look for images
+            _images = FindImages(_sections);
             // look for footnotes
             _footnotes = FindFootnotes(_sections);
         }
@@ -151,34 +152,75 @@ namespace Text2Html
             }
         }
 
-        public void SaveAsHtml(string pathname)
+        public void SaveAsHtml(string pathname, string cssText)
         {
             if (string.IsNullOrEmpty(pathname))
             {
                 throw new SystemException("Pathname is blank");
             }
+            _htmlFolder = GetHtmlFolderName(_baseFilename);
+            // create all directories
             try
             {
                 if (!Directory.Exists(pathname))
                 {
                     Directory.CreateDirectory(pathname);
                 }
-                if (!Directory.Exists(_htmlFolderPath))
+                if (!Directory.Exists(Path.Combine(pathname, _htmlFolder)))
                 {
-                    Directory.CreateDirectory(_htmlFolderPath);
+                    Directory.CreateDirectory(Path.Combine(pathname, _htmlFolder));
                 }
-                if (!Directory.Exists(_htmlFolderPath + "\\_css"))
+                if (!Directory.Exists(Path.Combine(pathname, _htmlFolder , "_css")))
                 {
-                    Directory.CreateDirectory(_htmlFolderPath + "\\_css");
+                    Directory.CreateDirectory(Path.Combine(pathname, _htmlFolder, "_css"));
+                }
+                if (_images != null && _images.Count > 0)
+                {
+                    if (!Directory.Exists(Path.Combine(pathname, _htmlFolder, "images")))
+                    {
+                        Directory.CreateDirectory(Path.Combine(pathname, _htmlFolder, "images"));
+                    }
                 }
             }
             catch (Exception ex)
             {
                 throw new SystemException($"Cannot create directory\r\n{ex.Message}");
             }
+            // create CSS file
+            try
+            {
+                if (!File.Exists(Path.Combine(pathname, _htmlFolder, "_css","ebookstyle.css")))
+                {
+                    File.WriteAllText(Path.Combine(pathname, _htmlFolder, "_css","ebookstyle.css"), cssText);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new SystemException($"Cannot create CSS file\r\n{ex.Message}");
+            }
+            // copy images to new folder
+            try
+            {
+                if (_images != null && _images.Count > 0)
+                {
+                    foreach (ImageLink obj in _images)
+                    {
+                        if (File.Exists(Path.Combine(_basePath, obj.ImageFilename)) &&
+                            !File.Exists(Path.Combine(pathname, _htmlFolder, obj.NewImageFilename)))
+                        {
+                            File.Copy(Path.Combine(_basePath, obj.ImageFilename),
+                                      Path.Combine(pathname, _htmlFolder, obj.NewImageFilename));
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new SystemException($"Error copying images\r\n{ex.Message}");
+            }
             // build *.html table of contents document
             int sectionNumber = 0;
-            using (StreamWriter writer = File.CreateText(Path.Combine(_basePath, _htmlFolder + ".html")))
+            using (StreamWriter writer = File.CreateText(Path.Combine(pathname, _htmlFolder + ".html")))
             {
                 writer.WriteLine("<html>");
                 writer.WriteLine("<head>");
@@ -218,7 +260,7 @@ namespace Text2Html
             sectionNumber = 0;
             foreach (string sectionText in _sections)
             {
-                using (StreamWriter writer = File.CreateText($"{_htmlFolderPath}\\part{sectionNumber:0000}.html"))
+                using (StreamWriter writer = File.CreateText(Path.Combine(pathname, _htmlFolder, $"part{sectionNumber:0000}.html")))
                 {
                     writer.WriteLine("<html>");
                     writer.WriteLine("<head>");
@@ -233,7 +275,7 @@ namespace Text2Html
                     writer.WriteLine("<link href=\"_css\\ebookstyle.css\" rel=\"stylesheet\" type=\"text/css\">");
                     writer.WriteLine("</head>");
                     writer.WriteLine("<body>");
-                    writer.Write(TransformText.ConvertText2Html(sectionText, sectionNumber, _footnotes));
+                    writer.Write(TransformText.ConvertText2Html(sectionText, sectionNumber, _images, _footnotes));
                     writer.WriteLine("</body>");
                     writer.WriteLine("</html>");
                     sectionNumber++;
@@ -282,6 +324,54 @@ namespace Text2Html
                         }
                     };
                     pos = pos3 + 2;
+                }
+                sectionNumber++;
+            }
+            return result;
+        }
+
+        private List<ImageLink> FindImages(List<string> sections)
+        {
+            List<ImageLink> result = new List<ImageLink>();
+            int sectionNumber = 0;
+            int imageNumber = 0;
+            foreach (string sectionText in _sections)
+            {
+                int pos = 0;
+                while (sectionText.IndexOf("<image", pos) >= 0)
+                {
+                    int pos2 = sectionText.IndexOf("<image", pos);
+                    int pos3 = sectionText.IndexOf(">", pos2);
+                    string filename = sectionText[(pos2 + "<image".Length)..pos3].Trim();
+                    if (filename.StartsWith("="))
+                    {
+                        filename = filename[1..].Trim();
+                    }
+                    if (filename.EndsWith("/"))
+                    {
+                        filename = filename[0..^1].Trim();
+                    }
+                    bool found = false;
+                    foreach (ImageLink obj in result)
+                    {
+                        if (obj.ImageFilename == filename)
+                        {
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found)
+                    {
+                        string extension = filename[filename.LastIndexOf(".")..];
+                        ImageLink imageObj = new ImageLink
+                        {
+                            ImageFilename = filename,
+                            NewImageFilename = $"images\\{imageNumber:00000}{extension}"
+                        };
+                        result.Add(imageObj);
+                        imageNumber++;
+                    }
+                    pos = pos3 + 1;
                 }
                 sectionNumber++;
             }

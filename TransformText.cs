@@ -1,12 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Text;
 
 namespace Text2Html
 {
     public static class TransformText
     {
-        public static string ConvertText2Html(string source, int sectionNumber, List<Footnote> footnotes)
+        public static string ConvertText2Html(string source, int sectionNumber, List<ImageLink> images, List<Footnote> footnotes)
         {
             if (string.IsNullOrEmpty(source))
             {
@@ -21,9 +20,19 @@ namespace Text2Html
                 string lineNew = line;
                 if (sectionNumber == 0)
                 {
-                    if (lineNumber < 2)
+                    if (lineNumber == 0)
                     {
                         continue;
+                    }
+                    if (lineNumber == 1)
+                    {
+                        if (string.IsNullOrEmpty(line))
+                        {
+                            continue; // skip if blank
+                        }
+                        // add blank line if not blank
+                        lineNew = "<p>&nbsp;</p>";
+                        result.AppendLine(lineNew);
                     }
                     if (string.IsNullOrEmpty(lineNew))
                     {
@@ -75,9 +84,9 @@ namespace Text2Html
                 lineNew = FixFootnotes(lineNew, footnotes);
                 if (lineNew == "***")
                 {
-                    lineNew = $"&nbsp;</p><p class=\"scenebreak\">* * *</p><p>&nbsp;";
+                    lineNew = $"<p>&nbsp;</p><p class=\"scenebreak\">* * *</p><p>&nbsp;</p>";
                 }
-                if (lineNew.StartsWith("^^"))
+                else if (lineNew.StartsWith("^^"))
                 {
                     lineNew = $"<p class=\"break\"><b><big>{lineNew[2..]}</big></b></p>";
                 }
@@ -88,6 +97,30 @@ namespace Text2Html
                 else if (lineNew.StartsWith("\t"))
                 {
                     lineNew = $"<p class=\"quoteblock\">{lineNew[1..]}</p>";
+                }
+                else if (lineNew.StartsWith("<image") && lineNew.IndexOf(">") == lineNew.Length - 1)
+                {
+                    int pos2 = lineNew.IndexOf("<image");
+                    int pos3 = lineNew.IndexOf(">", pos2);
+                    string filename = lineNew[(pos2 + "<image".Length)..pos3].Trim();
+                    if (filename.StartsWith("="))
+                    {
+                        filename = filename[1..].Trim();
+                    }
+                    if (filename.EndsWith("/"))
+                    {
+                        filename = filename[0..^1].Trim();
+                    }
+                    foreach (ImageLink obj in images)
+                    {
+                        if (obj.ImageFilename == filename)
+                        {
+                            lineNew = lineNew[0..pos2] +
+                                      $"<div style=\"text-align:center\"><img src=\"{obj.NewImageFilename}\"></img></div>" +
+                                      lineNew[(pos3+1)..];
+                            break;
+                        }
+                    }
                 }
                 else
                 {
