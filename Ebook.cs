@@ -30,9 +30,9 @@ namespace Text2Html
             }
             // save filename for later use
             _filename = filename;
-            _basePath = filename.Substring(0, _filename.LastIndexOf("\\"));
-            _baseFilename = filename.Substring(_filename.LastIndexOf("\\") + 1);
-            _baseFilename = _baseFilename.Substring(0, _baseFilename.LastIndexOf(".")); // remove extension
+            _basePath = filename[.._filename.LastIndexOf("\\")];
+            _baseFilename = filename[(_filename.LastIndexOf("\\") + 1)..];
+            _baseFilename = _baseFilename[.._baseFilename.LastIndexOf(".")]; // remove extension
             // prepare storage locations
             _metadata = new List<string>();
             _sections = new List<string>();
@@ -152,13 +152,17 @@ namespace Text2Html
             }
         }
 
-        public void SaveAsHtml(string pathname, string cssText)
+        public bool SaveAsHtml(string pathname, string cssText)
         {
             if (string.IsNullOrEmpty(pathname))
             {
                 throw new SystemException("Pathname is blank");
             }
+            bool changed = false;
+            int sectionNumber = 0;
+            string outputFilename;
             _htmlFolder = GetHtmlFolderName(_baseFilename);
+            StringBuilder outputHtml = new StringBuilder();
             // create all directories
             try
             {
@@ -169,16 +173,19 @@ namespace Text2Html
                 if (!Directory.Exists(Path.Combine(pathname, _htmlFolder)))
                 {
                     Directory.CreateDirectory(Path.Combine(pathname, _htmlFolder));
+                    changed = true;
                 }
-                if (!Directory.Exists(Path.Combine(pathname, _htmlFolder , "_css")))
+                if (!Directory.Exists(Path.Combine(pathname, _htmlFolder, "_css")))
                 {
                     Directory.CreateDirectory(Path.Combine(pathname, _htmlFolder, "_css"));
+                    changed = true;
                 }
                 if (_images != null && _images.Count > 0)
                 {
                     if (!Directory.Exists(Path.Combine(pathname, _htmlFolder, "images")))
                     {
                         Directory.CreateDirectory(Path.Combine(pathname, _htmlFolder, "images"));
+                        changed = true;
                     }
                 }
             }
@@ -186,78 +193,48 @@ namespace Text2Html
             {
                 throw new SystemException($"Cannot create directory\r\n{ex.Message}");
             }
-            // build *.html table of contents document
-            int sectionNumber = 0;
-            using (StreamWriter writer = File.CreateText(Path.Combine(pathname, _htmlFolder + ".html")))
-            {
-                writer.WriteLine("<html>");
-                writer.WriteLine("<head>");
-                foreach (string line in _metadata)
-                {
-                    writer.WriteLine(line);
-                }
-                //TODO ### changed for debugging, change back
-                //writer.WriteLine($"<link href={_htmlFolder}\\\"_css\\ebookstyle.css\" rel=\"stylesheet\" type=\"text/css\">");
-                writer.WriteLine($"<link href=\"_css\\ebookstyle.css\" rel=\"stylesheet\" type=\"text/css\">");
-                writer.WriteLine("</head>");
-                writer.WriteLine("<body>");
-                writer.WriteLine("<h1>Table of Contents</h1>");
-                writer.WriteLine("<p style=\"text-indent:0pt\">");
-                sectionNumber = 0;
-                foreach (string sectionText in _sections)
-                {
-                    string sectionTitle;
-                    if (sectionText.Contains("\n"))
-                    {
-                        sectionTitle = sectionText[0..sectionText.IndexOf("\n")];
-                    }
-                    else
-                    {
-                        sectionTitle = sectionText;
-                    }
-                    if (sectionTitle.StartsWith(":") ||
-                        sectionTitle.StartsWith("+"))
-                    {
-                        sectionTitle = sectionTitle[1..];
-                    }
-                    sectionTitle = TransformText.FixHtmlChars(sectionTitle);
-                    writer.WriteLine($"<a href=\"{_htmlFolder}\\part{sectionNumber:0000}.html\">{sectionTitle}</a><br/>");
-                    sectionNumber++;
-                }
-                writer.WriteLine("</p>");
-                writer.WriteLine("</body>");
-                writer.WriteLine("</html>");
-            }
             sectionNumber = 0;
             foreach (string sectionText in _sections)
             {
-                using (StreamWriter writer = File.CreateText(Path.Combine(pathname, _htmlFolder, $"part{sectionNumber:0000}.html")))
+                outputFilename = Path.Combine(pathname, _htmlFolder, $"part{sectionNumber:0000}.html");
+                outputHtml.Clear();
+                outputHtml.AppendLine("<html>");
+                outputHtml.AppendLine("<head>");
+                foreach (string line in _metadata)
                 {
-                    writer.WriteLine("<html>");
-                    writer.WriteLine("<head>");
-                    foreach (string line in _metadata)
-                    {
-                        //TODO ### only write <title> line here
-                        // if (line.Contains("<title>"))
-                        // {
-                        writer.WriteLine(line);
-                        // }
-                    }
-                    writer.WriteLine("<link href=\"_css\\ebookstyle.css\" rel=\"stylesheet\" type=\"text/css\">");
-                    writer.WriteLine("</head>");
-                    writer.WriteLine("<body>");
-                    writer.Write(TransformText.ConvertText2Html(sectionText, sectionNumber, _images, _footnotes));
-                    writer.WriteLine("</body>");
-                    writer.WriteLine("</html>");
-                    sectionNumber++;
+                    //TODO ### only write <title> line here
+                    // if (line.Contains("<title>"))
+                    // {
+                    outputHtml.AppendLine(line);
+                    // }
                 }
+                outputHtml.AppendLine("<link href=\"_css\\ebookstyle.css\" rel=\"stylesheet\" type=\"text/css\">");
+                outputHtml.AppendLine("</head>");
+                outputHtml.AppendLine("<body>");
+                outputHtml.Append(TransformText.ConvertText2Html(sectionText, sectionNumber, _images, _footnotes));
+                outputHtml.AppendLine("</body>");
+                outputHtml.AppendLine("</html>");
+                // bump section number first
+                sectionNumber++;
+                // output html if necessary
+                if (File.Exists(outputFilename))
+                {
+                    string origHtml = File.ReadAllText(outputFilename);
+                    if (origHtml == outputHtml.ToString())
+                    {
+                        continue;
+                    }
+                }
+                File.WriteAllText(outputFilename, outputHtml.ToString());
+                changed = true;
             }
             // create CSS file
             try
             {
-                if (!File.Exists(Path.Combine(pathname, _htmlFolder, "_css","ebookstyle.css")))
+                if (!File.Exists(Path.Combine(pathname, _htmlFolder, "_css", "ebookstyle.css")))
                 {
-                    File.WriteAllText(Path.Combine(pathname, _htmlFolder, "_css","ebookstyle.css"), cssText);
+                    File.WriteAllText(Path.Combine(pathname, _htmlFolder, "_css", "ebookstyle.css"), cssText);
+                    changed = true;
                 }
             }
             catch (Exception ex)
@@ -271,11 +248,29 @@ namespace Text2Html
                 {
                     foreach (ImageLink obj in _images)
                     {
-                        if (File.Exists(Path.Combine(_basePath, obj.ImageFilename)) &&
-                            !File.Exists(Path.Combine(pathname, _htmlFolder, obj.NewImageFilename)))
+                        bool needImage = false;
+                        string fromFilename = Path.Combine(_basePath, obj.ImageFilename);
+                        string toFilename = Path.Combine(pathname, _htmlFolder, obj.NewImageFilename);
+                        if (File.Exists(fromFilename))
                         {
-                            File.Copy(Path.Combine(_basePath, obj.ImageFilename),
-                                      Path.Combine(pathname, _htmlFolder, obj.NewImageFilename));
+                            if (File.Exists(toFilename))
+                            {
+                                FileInfo fromInfo = new FileInfo(fromFilename);
+                                FileInfo toInfo = new FileInfo(toFilename);
+                                if (fromInfo.Length != toInfo.Length)
+                                {
+                                    needImage = true;
+                                }
+                            }
+                            else
+                            {
+                                needImage = true;
+                            }
+                            if (needImage)
+                            {
+                                File.Copy(fromFilename, toFilename);
+                                changed = true;
+                            }
                         }
                     }
                 }
@@ -284,6 +279,60 @@ namespace Text2Html
             {
                 throw new SystemException($"Error copying images\r\n{ex.Message}");
             }
+            // build *.html table of contents document
+            outputFilename = Path.Combine(pathname, _htmlFolder + ".html");
+            outputHtml.Clear();
+            outputHtml.AppendLine("<html>");
+            outputHtml.AppendLine("<head>");
+            foreach (string line in _metadata)
+            {
+                outputHtml.AppendLine(line);
+            }
+            //TODO ### changed for debugging, change back
+            //writer.AppendLine($"<link href={_htmlFolder}\\\"_css\\ebookstyle.css\" rel=\"stylesheet\" type=\"text/css\">");
+            outputHtml.AppendLine($"<link href=\"_css\\ebookstyle.css\" rel=\"stylesheet\" type=\"text/css\">");
+            outputHtml.AppendLine("</head>");
+            outputHtml.AppendLine("<body>");
+            outputHtml.AppendLine("<h1>Table of Contents</h1>");
+            outputHtml.AppendLine("<p style=\"text-indent:0pt\">");
+            sectionNumber = 0;
+            foreach (string sectionText in _sections)
+            {
+                string sectionTitle;
+                if (sectionText.Contains("\n"))
+                {
+                    sectionTitle = sectionText[0..sectionText.IndexOf("\n")];
+                }
+                else
+                {
+                    sectionTitle = sectionText;
+                }
+                if (sectionTitle.StartsWith(":") ||
+                    sectionTitle.StartsWith("+"))
+                {
+                    sectionTitle = sectionTitle[1..];
+                }
+                sectionTitle = TransformText.FixHtmlChars(sectionTitle);
+                outputHtml.AppendLine($"<a href=\"{_htmlFolder}\\part{sectionNumber:0000}.html\">{sectionTitle}</a><br/>");
+                sectionNumber++;
+            }
+            outputHtml.AppendLine("</p>");
+            outputHtml.AppendLine("</body>");
+            outputHtml.AppendLine("</html>");
+            // output html if necessary
+            if (!changed && File.Exists(outputFilename))
+            {
+                string origHtml = File.ReadAllText(outputFilename);
+                if (origHtml != outputHtml.ToString())
+                {
+                    changed = true;
+                }
+            }
+            if (changed)
+            {
+                File.WriteAllText(outputFilename, outputHtml.ToString());
+            }
+            return changed;
         }
 
         private List<Footnote> FindFootnotes(List<string> sections)

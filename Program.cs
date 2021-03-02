@@ -10,13 +10,28 @@ namespace Text2Html
         {
             Assembly assembly = Assembly.GetExecutingAssembly();
             string cssText = GetStringResource("Resources.ebookstyle.css", assembly);
+            int fileCount = 0;
+            int changedCount = 0;
             foreach (string filename in Directory.GetFiles(args[0], "*.txt"))
             {
-                Console.WriteLine(filename);
+                fileCount++;
+                Console.Write($"\r{fileCount}");
                 Ebook myBook = new Ebook();
                 myBook.LoadTextFile(filename);
-                myBook.SaveAsHtml(args[1], cssText);
+                if (myBook.SaveAsHtml(args[1], cssText))
+                {
+                    Console.Write("\r");
+                    Console.WriteLine(filename);
+                    changedCount++;
+                }
             }
+            Console.Write("\r");
+            if (changedCount > 0)
+            {
+                Console.WriteLine();
+            }
+            Console.WriteLine($"Files found  : {fileCount}");
+            Console.WriteLine($"Files changed: {changedCount}");
         }
 
         private static string GetStringResource(string resourceName, Assembly assembly)
