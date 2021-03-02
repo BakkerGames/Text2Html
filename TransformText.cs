@@ -132,7 +132,7 @@ namespace Text2Html
                          lineNew.StartsWith("</td>") ||
                          lineNew.StartsWith("<hr"))
                 { 
-                    // no change to lineNew for tables
+                    // no change to lineNew for some tags
                 }
                 else if (lineNew.StartsWith("\t"))
                 {
