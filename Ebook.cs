@@ -75,7 +75,7 @@ namespace Text2Html
                     {
                         continue;
                     }
-                    if (line.StartsWith("<"))
+                    if (line.StartsWith("<title") || line.StartsWith("<meta"))
                     {
                         _metadata.Add(line);
                         continue;
@@ -186,6 +186,72 @@ namespace Text2Html
             {
                 throw new SystemException($"Cannot create directory\r\n{ex.Message}");
             }
+            // build *.html table of contents document
+            int sectionNumber = 0;
+            using (StreamWriter writer = File.CreateText(Path.Combine(pathname, _htmlFolder + ".html")))
+            {
+                writer.WriteLine("<html>");
+                writer.WriteLine("<head>");
+                foreach (string line in _metadata)
+                {
+                    writer.WriteLine(line);
+                }
+                //TODO ### changed for debugging, change back
+                //writer.WriteLine($"<link href={_htmlFolder}\\\"_css\\ebookstyle.css\" rel=\"stylesheet\" type=\"text/css\">");
+                writer.WriteLine($"<link href=\"_css\\ebookstyle.css\" rel=\"stylesheet\" type=\"text/css\">");
+                writer.WriteLine("</head>");
+                writer.WriteLine("<body>");
+                writer.WriteLine("<h1>Table of Contents</h1>");
+                writer.WriteLine("<p style=\"text-indent:0pt\">");
+                sectionNumber = 0;
+                foreach (string sectionText in _sections)
+                {
+                    string sectionTitle;
+                    if (sectionText.Contains("\n"))
+                    {
+                        sectionTitle = sectionText[0..sectionText.IndexOf("\n")];
+                    }
+                    else
+                    {
+                        sectionTitle = sectionText;
+                    }
+                    if (sectionTitle.StartsWith(":") ||
+                        sectionTitle.StartsWith("+"))
+                    {
+                        sectionTitle = sectionTitle[1..];
+                    }
+                    sectionTitle = TransformText.FixHtmlChars(sectionTitle);
+                    writer.WriteLine($"<a href=\"{_htmlFolder}\\part{sectionNumber:0000}.html\">{sectionTitle}</a><br/>");
+                    sectionNumber++;
+                }
+                writer.WriteLine("</p>");
+                writer.WriteLine("</body>");
+                writer.WriteLine("</html>");
+            }
+            sectionNumber = 0;
+            foreach (string sectionText in _sections)
+            {
+                using (StreamWriter writer = File.CreateText(Path.Combine(pathname, _htmlFolder, $"part{sectionNumber:0000}.html")))
+                {
+                    writer.WriteLine("<html>");
+                    writer.WriteLine("<head>");
+                    foreach (string line in _metadata)
+                    {
+                        //TODO ### only write <title> line here
+                        // if (line.Contains("<title>"))
+                        // {
+                        writer.WriteLine(line);
+                        // }
+                    }
+                    writer.WriteLine("<link href=\"_css\\ebookstyle.css\" rel=\"stylesheet\" type=\"text/css\">");
+                    writer.WriteLine("</head>");
+                    writer.WriteLine("<body>");
+                    writer.Write(TransformText.ConvertText2Html(sectionText, sectionNumber, _images, _footnotes));
+                    writer.WriteLine("</body>");
+                    writer.WriteLine("</html>");
+                    sectionNumber++;
+                }
+            }
             // create CSS file
             try
             {
@@ -217,69 +283,6 @@ namespace Text2Html
             catch (Exception ex)
             {
                 throw new SystemException($"Error copying images\r\n{ex.Message}");
-            }
-            // build *.html table of contents document
-            int sectionNumber = 0;
-            using (StreamWriter writer = File.CreateText(Path.Combine(pathname, _htmlFolder + ".html")))
-            {
-                writer.WriteLine("<html>");
-                writer.WriteLine("<head>");
-                foreach (string line in _metadata)
-                {
-                    writer.WriteLine(line);
-                }
-                writer.WriteLine($"<link href={_htmlFolder}\\\"_css\\ebookstyle.css\" rel=\"stylesheet\" type=\"text/css\">");
-                writer.WriteLine("</head>");
-                writer.WriteLine("<body>");
-                writer.WriteLine("<h1>Table of Contents</h1>");
-                writer.WriteLine("<p style=\"text-indent:0pt\">");
-                sectionNumber = 0;
-                foreach (string sectionText in _sections)
-                {
-                    string sectionTitle;
-                    if (sectionText.Contains("\n"))
-                    {
-                        sectionTitle = sectionText[0..sectionText.IndexOf("\n")];
-                    }
-                    else
-                    {
-                        sectionTitle = sectionText;
-                    }
-                    if (sectionTitle.StartsWith(":") ||
-                        sectionTitle.StartsWith("+"))
-                    {
-                        sectionTitle = sectionTitle[1..];
-                    }
-                    writer.WriteLine($"<a href=\"{_htmlFolder}\\part{sectionNumber:0000}.html\">{sectionTitle}</a><br/>");
-                    sectionNumber++;
-                }
-                writer.WriteLine("</p>");
-                writer.WriteLine("</body>");
-                writer.WriteLine("</html>");
-            }
-            sectionNumber = 0;
-            foreach (string sectionText in _sections)
-            {
-                using (StreamWriter writer = File.CreateText(Path.Combine(pathname, _htmlFolder, $"part{sectionNumber:0000}.html")))
-                {
-                    writer.WriteLine("<html>");
-                    writer.WriteLine("<head>");
-                    foreach (string line in _metadata)
-                    {
-                        //TODO ### only write <title> line here
-                        // if (line.Contains("<title>"))
-                        // {
-                        writer.WriteLine(line);
-                        // }
-                    }
-                    writer.WriteLine("<link href=\"_css\\ebookstyle.css\" rel=\"stylesheet\" type=\"text/css\">");
-                    writer.WriteLine("</head>");
-                    writer.WriteLine("<body>");
-                    writer.Write(TransformText.ConvertText2Html(sectionText, sectionNumber, _images, _footnotes));
-                    writer.WriteLine("</body>");
-                    writer.WriteLine("</html>");
-                    sectionNumber++;
-                }
             }
         }
 
@@ -384,6 +387,7 @@ namespace Text2Html
             bool needUnderscore = false;
             foreach (char c in baseFilename)
             {
+                if (c == '\'') continue; // ignore single quotes
                 if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9'))
                 {
                     if (needUnderscore)

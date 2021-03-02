@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Text;
 
 namespace Text2Html
@@ -49,6 +50,7 @@ namespace Text2Html
                     {
                         lineNew = $"<p class=\"title\"><b>{lineNew}</b></p>";
                     }
+                    lineNew = FixAngleBrackets(lineNew);
                     result.AppendLine(lineNew);
                     continue;
                 }
@@ -82,7 +84,7 @@ namespace Text2Html
                 lineNew = FixHtmlChars(lineNew);
                 lineNew = FixHtmlPatterns(lineNew);
                 lineNew = FixFootnotes(lineNew, footnotes);
-                if (lineNew == "***")
+                if (lineNew == "***" || lineNew == "* * *")
                 {
                     lineNew = $"<p>&nbsp;</p><p class=\"scenebreak\">* * *</p><p>&nbsp;</p>";
                 }
@@ -117,7 +119,7 @@ namespace Text2Html
                         {
                             lineNew = lineNew[0..pos2] +
                                       $"<div style=\"text-align:center\"><img src=\"{obj.NewImageFilename}\"></img></div>" +
-                                      lineNew[(pos3+1)..];
+                                      lineNew[(pos3 + 1)..];
                             break;
                         }
                     }
@@ -126,12 +128,40 @@ namespace Text2Html
                 {
                     lineNew = $"<p>{lineNew}</p>";
                 }
+                lineNew = FixAngleBrackets(lineNew);
                 result.AppendLine(lineNew);
             }
             return result.ToString();
         }
 
-        private static string FixHtmlChars(string line)
+        private static string FixAngleBrackets(string lineNew)
+        {
+            if (!lineNew.Contains("<") && !lineNew.Contains(">"))
+            {
+                return lineNew;
+            }
+            StringBuilder result = new StringBuilder();
+            for (int i = 0; i < lineNew.Length; i++)
+            {
+                //                    if (lineNew.Contains("<"))
+                //                    {
+                //                        lineNew = lineNew.Replace("<", "&lt;");
+                //                    }
+                //                    if (lineNew.Contains(">"))
+                //                    {
+                //                        lineNew = lineNew.Replace(">", "&gt;");
+                //                    }
+                char c = lineNew[i];
+                if (c != '<' && c != '>')
+                {
+                    result.Append(c);
+                    continue;
+                }
+            }
+            return result.ToString();
+        }
+
+        public static string FixHtmlChars(string line)
         {
             string lineNew = line;
             if (lineNew.Contains("€")) lineNew = lineNew.Replace("€", "&euro;");
@@ -258,7 +288,7 @@ namespace Text2Html
             return lineNew;
         }
 
-        private static string FixHtmlPatterns(string line)
+        public static string FixHtmlPatterns(string line)
         {
             string lineNew = line;
             if (lineNew.Contains("\\\"")) lineNew = lineNew.Replace("\\\"", "\"");
