@@ -354,6 +354,10 @@ namespace Text2Html
                     {
                         filename = filename[0..^1].Trim();
                     }
+                    if (filename.StartsWith("\"") && filename.EndsWith("\""))
+                    {
+                        filename = filename[1..^1].Trim();
+                    }
                     bool found = false;
                     foreach (ImageLink obj in result)
                     {

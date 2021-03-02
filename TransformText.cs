@@ -74,6 +74,7 @@ namespace Text2Html
                     {
                         lineNew = $"<h3>{lineNew}</h3>";
                     }
+                    lineNew = FixHtmlChars(lineNew);
                     result.AppendLine(lineNew);
                     continue;
                 }
@@ -84,25 +85,82 @@ namespace Text2Html
                 lineNew = FixHtmlChars(lineNew);
                 lineNew = FixHtmlPatterns(lineNew);
                 lineNew = FixFootnotes(lineNew, footnotes);
+                if (string.IsNullOrEmpty(lineNew))
+                {
+                    continue;
+                }
                 if (lineNew == "***" || lineNew == "* * *")
                 {
-                    lineNew = $"<p>&nbsp;</p><p class=\"scenebreak\">* * *</p><p>&nbsp;</p>";
+                    if (!result.ToString().EndsWith("<p>&nbsp;</p>\r\n"))
+                    {
+                        result.Append("<p>&nbsp;</p>");
+                    }
+                    else
+                    {
+                        result.Length -= 2; // remove \r\n
+                    }
+                    lineNew = $"<p class=\"scenebreak\">* * *</p><p>&nbsp;</p>";
                 }
                 else if (lineNew.StartsWith("^^"))
                 {
                     lineNew = $"<p class=\"break\"><b><big>{lineNew[2..]}</big></b></p>";
                 }
+                else if (lineNew.StartsWith("]"))
+                {
+                    lineNew = $"<p class=\"blockright\">{lineNew[1..]}</p>";
+                }
                 else if (lineNew.StartsWith("^"))
                 {
                     lineNew = $"<p class=\"break\"><b>{lineNew[1..]}</b></p>";
                 }
-                else if (lineNew.StartsWith("|"))
+                else if (lineNew.StartsWith("|") && !lineNew.StartsWith("||"))
                 {
                     lineNew = $"<p class=\"noindent\">{lineNew[1..]}</p>";
                 }
+                else if (lineNew.StartsWith("%"))
+                {
+                    //TODO Cluster books need "\%" for duocirc quote lines
+                    lineNew = $"<p class=\"outdent\">{lineNew[1..]}</p>";
+                }
+                else if (lineNew.StartsWith("<table") ||
+                         lineNew.StartsWith("<th>") ||
+                         lineNew.StartsWith("<tr>") ||
+                         lineNew.StartsWith("<td>") ||
+                         lineNew.StartsWith("</table>") ||
+                         lineNew.StartsWith("</th>") ||
+                         lineNew.StartsWith("</tr>") ||
+                         lineNew.StartsWith("</td>") ||
+                         lineNew.StartsWith("<hr"))
+                { 
+                    // no change to lineNew for tables
+                }
                 else if (lineNew.StartsWith("\t"))
                 {
-                    lineNew = $"<p class=\"quoteblock\">{lineNew[1..]}</p>";
+                    if (lineNew.StartsWith("\t|"))
+                    {
+                        lineNew = $"<p class=\"quoteblockflush\">{lineNew[2..]}</p>";
+                    }
+                    else if (lineNew.StartsWith("\t\t\t\t"))
+                    {
+                        lineNew = $"<p class=\"quoteblock4\">{lineNew[4..]}</p>";
+                    }
+                    else if (lineNew.StartsWith("\t\t\t"))
+                    {
+                        lineNew = $"<p class=\"quoteblock3\">{lineNew[3..]}</p>";
+                    }
+                    else if (lineNew.StartsWith("\t\t"))
+                    {
+                        lineNew = $"<p class=\"quoteblock2\">{lineNew[2..]}</p>";
+                    }
+                    else if (lineNew.StartsWith("\t&nbsp;&nbsp;&nbsp;&nbsp;"))
+                    {
+                        //TODO ### This is to match TXT2HTML, which is wrong. Remove after testing.
+                        lineNew = $"<p class=\"quoteblock\">{lineNew[25..]}</p>";
+                    }
+                    else
+                    {
+                        lineNew = $"<p class=\"quoteblock\">{lineNew[1..]}</p>";
+                    }
                 }
                 else
                 {
@@ -120,6 +178,10 @@ namespace Text2Html
                     if (filename.EndsWith("/"))
                     {
                         filename = filename[0..^1].Trim();
+                    }
+                    if (filename.StartsWith("\"") && filename.EndsWith("\""))
+                    {
+                        filename = filename[1..^1].Trim();
                     }
                     bool found = false;
                     foreach (ImageLink obj in images)
@@ -348,6 +410,8 @@ namespace Text2Html
             if (lineNew.Contains("&#0;")) lineNew = lineNew.Replace("&#0;", "");
             if (lineNew.Contains("&#32;")) lineNew = lineNew.Replace("&#32;", " ");
             if (lineNew.Contains("&#45;")) lineNew = lineNew.Replace("&#45;", "-");
+            if (lineNew.Contains("<overline>")) lineNew = lineNew.Replace("<overline>", "<span style=\"text-decoration: overline;\">");
+            if (lineNew.Contains("</overline>")) lineNew = lineNew.Replace("</overline>", "</span>");
             return lineNew;
         }
 
