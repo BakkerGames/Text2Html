@@ -96,11 +96,19 @@ namespace Text2Html
                 {
                     lineNew = $"<p class=\"break\"><b>{lineNew[1..]}</b></p>";
                 }
+                else if (lineNew.StartsWith("|"))
+                {
+                    lineNew = $"<p class=\"noindent\">{lineNew[1..]}</p>";
+                }
                 else if (lineNew.StartsWith("\t"))
                 {
                     lineNew = $"<p class=\"quoteblock\">{lineNew[1..]}</p>";
                 }
-                else if (lineNew.StartsWith("<image") && lineNew.IndexOf(">") == lineNew.Length - 1)
+                else
+                {
+                    lineNew = $"<p>{lineNew}</p>";
+                }
+                while (lineNew.Contains("<image"))
                 {
                     int pos2 = lineNew.IndexOf("<image");
                     int pos3 = lineNew.IndexOf(">", pos2);
@@ -113,20 +121,26 @@ namespace Text2Html
                     {
                         filename = filename[0..^1].Trim();
                     }
+                    bool found = false;
                     foreach (ImageLink obj in images)
                     {
                         if (obj.ImageFilename == filename)
                         {
                             lineNew = lineNew[0..pos2] +
-                                      $"<div style=\"text-align:center\"><img src=\"{obj.NewImageFilename}\"></img></div>" +
+                                      $"<img src=\"{obj.NewImageFilename}\"></img>" +
                                       lineNew[(pos3 + 1)..];
+                            found = true;
                             break;
                         }
                     }
+                    if (!found)
+                    {
+                        throw new SystemException($"Image not found: {line}");
+                    }
                 }
-                else
+                if (lineNew.StartsWith("<p><img ") && lineNew.EndsWith("></img></p>") && !lineNew[4..^11].Contains('>'))
                 {
-                    lineNew = $"<p>{lineNew}</p>";
+                    lineNew = $"<div style=\"text-align:center\">{lineNew[3..^4]}</div>";
                 }
                 lineNew = FixAngleBrackets(lineNew);
                 result.AppendLine(lineNew);
@@ -141,22 +155,58 @@ namespace Text2Html
                 return lineNew;
             }
             StringBuilder result = new StringBuilder();
+            StringBuilder tag = new StringBuilder();
+            bool inTag = false;
             for (int i = 0; i < lineNew.Length; i++)
             {
-                //                    if (lineNew.Contains("<"))
-                //                    {
-                //                        lineNew = lineNew.Replace("<", "&lt;");
-                //                    }
-                //                    if (lineNew.Contains(">"))
-                //                    {
-                //                        lineNew = lineNew.Replace(">", "&gt;");
-                //                    }
                 char c = lineNew[i];
                 if (c != '<' && c != '>')
                 {
-                    result.Append(c);
+                    if (inTag)
+                    {
+                        tag.Append(c);
+                    }
+                    else
+                    {
+                        result.Append(c);
+                    }
                     continue;
                 }
+                if (c == '<')
+                {
+                    if (inTag)
+                    {
+                        result.Append("&lt;"); // start of tag was not real tag
+                        result.Append(tag);
+                        tag.Clear();
+                        // still inTag
+                    }
+                    else
+                    {
+                        inTag = true;
+                    }
+                }
+                else // '>'
+                {
+                    if (inTag)
+                    {
+                        result.Append('<');
+                        result.Append(tag);
+                        result.Append('>');
+                        tag.Clear();
+                        inTag = false;
+                    }
+                    else
+                    {
+                        result.Append("&gt;");
+                    }
+                }
+            }
+            if (inTag)
+            {
+                result.Append("&lt;"); // start of tag was not real tag
+                result.Append(tag);
+                tag.Clear();
             }
             return result.ToString();
         }
