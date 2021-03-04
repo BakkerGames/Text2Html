@@ -12,7 +12,7 @@ namespace Text2Html
             {
                 return "";
             }
-            StringBuilder result = new StringBuilder();
+            StringBuilder result = new();
             string[] sectionLines = source.Split('\n');
             int lineNumber = -1;
             foreach (string line in sectionLines)
@@ -117,10 +117,9 @@ namespace Text2Html
                 {
                     lineNew = $"<p class=\"noindent\">{lineNew[1..]}</p>";
                 }
-                else if (lineNew.StartsWith("%"))
+                else if (lineNew.StartsWith("<outdent>"))
                 {
-                    //TODO Cluster books need "\%" for duocirc quote lines
-                    lineNew = $"<p class=\"outdent\">{lineNew[1..]}</p>";
+                    lineNew = $"<p class=\"outdent\">{lineNew[9..]}</p>";
                 }
                 else if (lineNew.StartsWith("<table") ||
                          lineNew.StartsWith("<th>") ||
@@ -152,13 +151,10 @@ namespace Text2Html
                     {
                         lineNew = $"<p class=\"quoteblock2\">{lineNew[2..]}</p>";
                     }
-                    //else if (lineNew.StartsWith("\t&nbsp;&nbsp;&nbsp;&nbsp;"))
-                    //{
-                    //    //TODO ### This is to match TXT2HTML, which is wrong. Remove after testing.
-                    //    lineNew = $"<p class=\"quoteblock\">{lineNew[25..]}</p>";
-                    //TODO ### this might be correct, not sure yet
-                    //    lineNew = $"<p class=\"quoteblock2\">{lineNew[25..]}</p>";
-                    //}
+                    else if (lineNew.StartsWith("\t&nbsp;&nbsp;&nbsp;&nbsp;"))
+                    {
+                        lineNew = $"<p class=\"quoteblock2\">{lineNew[25..]}</p>";
+                    }
                     else
                     {
                         lineNew = $"<p class=\"quoteblock\">{lineNew[1..]}</p>";
@@ -218,8 +214,8 @@ namespace Text2Html
             {
                 return lineNew;
             }
-            StringBuilder result = new StringBuilder();
-            StringBuilder tag = new StringBuilder();
+            StringBuilder result = new();
+            StringBuilder tag = new();
             bool inTag = false;
             for (int i = 0; i < lineNew.Length; i++)
             {

@@ -41,7 +41,7 @@ namespace Text2Html
             // load all file lines
             string[] lines = File.ReadAllLines(_filename);
             // split lines into sections
-            StringBuilder sectionText = new StringBuilder();
+            StringBuilder sectionText = new();
             int lineNumber = 0;
             int blankLines = 0;
             bool inHeader = true;
@@ -162,7 +162,7 @@ namespace Text2Html
             int sectionNumber = 0;
             string outputFilename;
             _htmlFolder = GetHtmlFolderName(_baseFilename);
-            StringBuilder outputHtml = new StringBuilder();
+            StringBuilder outputHtml = new();
             // create all directories
             try
             {
@@ -202,11 +202,10 @@ namespace Text2Html
                 outputHtml.AppendLine("<head>");
                 foreach (string line in _metadata)
                 {
-                    //TODO ### only write <title> line here
-                    // if (line.Contains("<title>"))
-                    // {
-                    outputHtml.AppendLine(line);
-                    // }
+                    if (line.Contains("<title>"))
+                    {
+                        outputHtml.AppendLine(line);
+                    }
                 }
                 outputHtml.AppendLine("<link href=\"_css\\ebookstyle.css\" rel=\"stylesheet\" type=\"text/css\">");
                 outputHtml.AppendLine("</head>");
@@ -255,8 +254,8 @@ namespace Text2Html
                         {
                             if (File.Exists(toFilename))
                             {
-                                FileInfo fromInfo = new FileInfo(fromFilename);
-                                FileInfo toInfo = new FileInfo(toFilename);
+                                FileInfo fromInfo = new(fromFilename);
+                                FileInfo toInfo = new(toFilename);
                                 if (fromInfo.Length != toInfo.Length)
                                 {
                                     needImage = true;
@@ -288,9 +287,7 @@ namespace Text2Html
             {
                 outputHtml.AppendLine(line);
             }
-            //TODO ### changed for debugging, change back
-            //writer.AppendLine($"<link href={_htmlFolder}\\\"_css\\ebookstyle.css\" rel=\"stylesheet\" type=\"text/css\">");
-            outputHtml.AppendLine($"<link href=\"_css\\ebookstyle.css\" rel=\"stylesheet\" type=\"text/css\">");
+            outputHtml.AppendLine($"<link href=\"{_htmlFolder}\\_css\\ebookstyle.css\" rel=\"stylesheet\" type=\"text/css\">");
             outputHtml.AppendLine("</head>");
             outputHtml.AppendLine("<body>");
             outputHtml.AppendLine("<h1>Table of Contents</h1>");
@@ -337,7 +334,7 @@ namespace Text2Html
 
         private List<Footnote> FindFootnotes(List<string> sections)
         {
-            List<Footnote> result = new List<Footnote>();
+            List<Footnote> result = new();
             int sectionNumber = 0;
             foreach (string sectionText in _sections)
             {
@@ -347,7 +344,7 @@ namespace Text2Html
                     int pos2 = sectionText.IndexOf("<footnote", pos);
                     int pos3 = sectionText.IndexOf("/>", pos2);
                     string tag = sectionText[(pos2 + "<footnote".Length)..pos3].Trim();
-                    Footnote fn = new Footnote
+                    Footnote fn = new()
                     {
                         FootnoteTag = tag,
                         LinkSectionNumber = sectionNumber,
@@ -384,7 +381,7 @@ namespace Text2Html
 
         private List<ImageLink> FindImages(List<string> sections)
         {
-            List<ImageLink> result = new List<ImageLink>();
+            List<ImageLink> result = new();
             int sectionNumber = 0;
             int imageNumber = 0;
             foreach (string sectionText in _sections)
@@ -419,7 +416,7 @@ namespace Text2Html
                     if (!found)
                     {
                         string extension = filename[filename.LastIndexOf(".")..];
-                        ImageLink imageObj = new ImageLink
+                        ImageLink imageObj = new()
                         {
                             ImageFilename = filename,
                             NewImageFilename = $"images\\{imageNumber:00000}{extension}"
@@ -436,7 +433,7 @@ namespace Text2Html
 
         private static string GetHtmlFolderName(string baseFilename)
         {
-            StringBuilder result = new StringBuilder();
+            StringBuilder result = new();
             bool needUnderscore = false;
             foreach (char c in baseFilename)
             {

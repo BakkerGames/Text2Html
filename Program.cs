@@ -16,7 +16,7 @@ namespace Text2Html
             {
                 fileCount++;
                 Console.Write($"\r{fileCount}");
-                Ebook myBook = new Ebook();
+                Ebook myBook = new();
                 myBook.LoadTextFile(filename);
                 if (myBook.SaveAsHtml(args[1], cssText))
                 {
@@ -42,7 +42,7 @@ namespace Text2Html
                 {
                     return null;
                 }
-                using (StreamReader reader = new StreamReader(resourceStream))
+                using (StreamReader reader = new(resourceStream))
                 {
                     return reader.ReadToEnd();
                 }
