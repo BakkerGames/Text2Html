@@ -131,7 +131,7 @@ namespace Text2Html
                          lineNew.StartsWith("</tr>") ||
                          lineNew.StartsWith("</td>") ||
                          lineNew.StartsWith("<hr"))
-                { 
+                {
                     // no change to lineNew for some tags
                 }
                 else if (lineNew.StartsWith("\t"))
@@ -152,11 +152,13 @@ namespace Text2Html
                     {
                         lineNew = $"<p class=\"quoteblock2\">{lineNew[2..]}</p>";
                     }
-                    else if (lineNew.StartsWith("\t&nbsp;&nbsp;&nbsp;&nbsp;"))
-                    {
-                        //TODO ### This is to match TXT2HTML, which is wrong. Remove after testing.
-                        lineNew = $"<p class=\"quoteblock\">{lineNew[25..]}</p>";
-                    }
+                    //else if (lineNew.StartsWith("\t&nbsp;&nbsp;&nbsp;&nbsp;"))
+                    //{
+                    //    //TODO ### This is to match TXT2HTML, which is wrong. Remove after testing.
+                    //    lineNew = $"<p class=\"quoteblock\">{lineNew[25..]}</p>";
+                    //TODO ### this might be correct, not sure yet
+                    //    lineNew = $"<p class=\"quoteblock2\">{lineNew[25..]}</p>";
+                    //}
                     else
                     {
                         lineNew = $"<p class=\"quoteblock\">{lineNew[1..]}</p>";
@@ -430,18 +432,14 @@ namespace Text2Html
                         if (fn.LinkSectionNumber == fn.TextSectionNumber)
                         {
                             lineNew = lineNew[0..pos2] +
-                                      $"<a id=\"fr{tag}\" href=\"#fn{tag}\">[{tag}]</a>" +
+                                      $"<a id=\"fnref{tag}\" href=\"#fn{tag}\">[{tag}]</a>" +
                                       lineNew[(pos3 + 2)..];
                         }
                         else
                         {
                             lineNew = lineNew[0..pos2] +
-                                      $"<a id=\"fr{tag}\" href=\"#fn{tag}\">[{tag}]</a>" +
+                                      $"<a id=\"fnref{tag}\" href=\"part{fn.TextSectionNumber:0000}.html#fn{tag}\">[{tag}]</a>" +
                                       lineNew[(pos3 + 2)..];
-                            // TODO ### removed for testing, put back after full compare
-                            //lineNew = lineNew[0..pos2] +
-                            //          $"<a id=\"fr{tag}\" href=\"part{fn.TextSectionNumber:0000}.html#fn{tag}\">[{tag}]</a>" +
-                            //          lineNew[(pos3 + 2)..];
                         }
                         break;
                     }
@@ -459,18 +457,14 @@ namespace Text2Html
                         if (fn.LinkSectionNumber == fn.TextSectionNumber)
                         {
                             lineNew = lineNew[0..pos2] +
-                                      $"<a id=\"fn{tag}\" href=\"#fr{tag}\">[{tag}]</a>" +
+                                      $"<a id=\"fn{tag}\" href=\"#fnref{tag}\">[{tag}]</a>" +
                                       lineNew[(pos3 + 2)..];
                         }
                         else
                         {
                             lineNew = lineNew[0..pos2] +
-                                      $"<a id=\"fn{tag}\" href=\"#fr{tag}\">[{tag}]</a>" +
+                                      $"<a id=\"fn{tag}\" href=\"part{fn.LinkSectionNumber:0000}.html#fnref{tag}\">[{tag}]</a>" +
                                       lineNew[(pos3 + 2)..];
-                            // TODO ### removed for testing, put back after full compare
-                            // lineNew = lineNew[0..pos2] +
-                            //           $"<a id=\"fn{tag}\" href=\"part{fn.LinkSectionNumber:0000}.html#fr{tag}\">[{tag}]</a>" +
-                            //           lineNew[(pos3 + 2)..];
                         }
                         break;
                     }
