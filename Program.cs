@@ -6,8 +6,16 @@ namespace Text2Html
 {
     class Program
     {
-        public static void Main(string[] args)
+        public static int Main(string[] args)
         {
+            if (args.Length < 2)
+            {
+                Console.WriteLine("Syntax: frompath topath");
+                return 1;
+            }
+            Console.WriteLine($"From: {args[0]}");
+            Console.WriteLine($"To  : {args[1]}");
+            Console.WriteLine();
             Assembly assembly = Assembly.GetExecutingAssembly();
             string cssText = GetStringResource("Resources.ebookstyle.css", assembly);
             int fileCount = 0;
@@ -32,6 +40,10 @@ namespace Text2Html
             }
             Console.WriteLine($"Files found  : {fileCount}");
             Console.WriteLine($"Files changed: {changedCount}");
+            Console.WriteLine();
+            Console.Write("Press enter to continue...");
+            Console.ReadLine();
+            return 0;
         }
 
         private static string GetStringResource(string resourceName, Assembly assembly)
