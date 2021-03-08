@@ -445,6 +445,10 @@ namespace Text2Html
             {
                 int pos2 = lineNew.IndexOf("<foottext");
                 int pos3 = lineNew.IndexOf("/>", pos2);
+                if (pos3 < 0)
+                {
+                    pos3 = lineNew.IndexOf(">", pos2);
+                }
                 string tag = lineNew[(pos2 + "<foottext".Length)..pos3].Trim();
                 foreach (Footnote fn in footnotes)
                 {
