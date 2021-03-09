@@ -129,7 +129,9 @@ namespace Text2Html
                          lineNew.StartsWith("</th>") ||
                          lineNew.StartsWith("</tr>") ||
                          lineNew.StartsWith("</td>") ||
-                         lineNew.StartsWith("<hr"))
+                         lineNew.StartsWith("<hr") ||
+                         lineNew.StartsWith("<p>") ||
+                         lineNew.StartsWith("<p "))
                 {
                     // no change to lineNew for some tags
                 }
@@ -421,10 +423,12 @@ namespace Text2Html
                 int pos2 = lineNew.IndexOf("<footnote");
                 int pos3 = lineNew.IndexOf("/>", pos2);
                 string tag = lineNew[(pos2 + "<footnote".Length)..pos3].Trim();
+                bool found = false;
                 foreach (Footnote fn in footnotes)
                 {
                     if (fn.FootnoteTag == tag)
                     {
+                        found = true;
                         if (fn.LinkSectionNumber == fn.TextSectionNumber)
                         {
                             lineNew = lineNew[0..pos2] +
@@ -440,35 +444,47 @@ namespace Text2Html
                         break;
                     }
                 };
+                if (!found)
+                {
+                    Console.WriteLine($"Error finding footnote: {tag}");
+                    break;
+                }
             }
             while (lineNew.Contains("<foottext"))
             {
                 int pos2 = lineNew.IndexOf("<foottext");
                 int pos3 = lineNew.IndexOf("/>", pos2);
-                if (pos3 < 0)
-                {
-                    pos3 = lineNew.IndexOf(">", pos2);
-                }
                 string tag = lineNew[(pos2 + "<foottext".Length)..pos3].Trim();
+                bool found = false;
                 foreach (Footnote fn in footnotes)
                 {
                     if (fn.FootnoteTag == tag)
                     {
+                        found = true;
                         if (fn.LinkSectionNumber == fn.TextSectionNumber)
                         {
-                            lineNew = lineNew[0..pos2] +
+                            lineNew = "<p style=\"page-break-before:always\">" +
+                                      lineNew[0..pos2] +
                                       $"<a id=\"fn{tag}\" href=\"#fnref{tag}\">[{tag}]</a>" +
-                                      lineNew[(pos3 + 2)..];
+                                      lineNew[(pos3 + 2)..] +
+                                      "</p>";
                         }
                         else
                         {
-                            lineNew = lineNew[0..pos2] +
+                            lineNew = "<p style=\"page-break-before:always\">" +
+                                      lineNew[0..pos2] +
                                       $"<a id=\"fn{tag}\" href=\"part{fn.LinkSectionNumber:0000}.html#fnref{tag}\">[{tag}]</a>" +
-                                      lineNew[(pos3 + 2)..];
+                                      lineNew[(pos3 + 2)..] +
+                                      "</p>";
                         }
                         break;
                     }
                 };
+                if (!found)
+                {
+                    Console.WriteLine($"Error finding footnote: {tag}");
+                    break;
+                }
             }
             return lineNew;
         }
