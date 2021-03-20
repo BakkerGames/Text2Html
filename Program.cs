@@ -13,6 +13,16 @@ namespace Text2Html
                 Console.WriteLine("Syntax: frompath topath");
                 return 1;
             }
+            if (!Directory.Exists(args[0]))
+            {
+                Console.WriteLine($"Directory not found: {args[0]}");
+                return 2;
+            }
+            if (!Directory.Exists(args[1]))
+            {
+                Console.WriteLine($"Directory not found: {args[1]}");
+                return 2;
+            }
             Console.WriteLine($"From: {args[0]}");
             Console.WriteLine($"To  : {args[1]}");
             Console.WriteLine();
@@ -33,7 +43,7 @@ namespace Text2Html
                     changedCount++;
                 }
             }
-            Console.Write("\r");
+            Console.Write("\r     \r");
             if (changedCount > 0)
             {
                 Console.WriteLine();
