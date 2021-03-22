@@ -407,11 +407,34 @@ namespace Text2Html
             if (lineNew.Contains("\\'")) lineNew = lineNew.Replace("\\'", "'");
             if (lineNew.Contains("' \"")) lineNew = lineNew.Replace("' \"", "'&nbsp;\"");
             if (lineNew.Contains("\" '")) lineNew = lineNew.Replace("\" '", "\"&nbsp;'");
-            if (lineNew.Contains("&#0;")) lineNew = lineNew.Replace("&#0;", "");
-            if (lineNew.Contains("&#32;")) lineNew = lineNew.Replace("&#32;", " ");
-            if (lineNew.Contains("&#45;")) lineNew = lineNew.Replace("&#45;", "-");
             if (lineNew.Contains("<overline>")) lineNew = lineNew.Replace("<overline>", "<span style=\"text-decoration: overline;\">");
             if (lineNew.Contains("</overline>")) lineNew = lineNew.Replace("</overline>", "</span>");
+            // handle mdash
+            if (lineNew.Contains("—"))
+            {
+                if (lineNew.Contains(" — ")) lineNew = lineNew.Replace(" — ", "—");
+                if (lineNew.Contains(" —")) lineNew = lineNew.Replace(" —", "—");
+                if (lineNew.Contains("— ")) lineNew = lineNew.Replace("— ", "—");
+                lineNew = lineNew.Replace("—", "<wbr>—<wbr>");
+                lineNew = lineNew.Replace(" \"<wbr>—<wbr>", " \"—");
+                lineNew = lineNew.Replace("\t\"<wbr>—<wbr>", "\t\"—");
+                lineNew = lineNew.Replace("<wbr>—<wbr>\" ", "—\" ");
+                lineNew = lineNew.Replace(" '<wbr>—<wbr>", " '—");
+                lineNew = lineNew.Replace("\t'<wbr>—<wbr>", "\t'—");
+                lineNew = lineNew.Replace("<wbr>—<wbr>' ", "—' ");
+                if (lineNew.EndsWith("<wbr>—<wbr>\""))
+                {
+                    lineNew = lineNew[..^12] + "—\"";
+                }
+                if (lineNew.EndsWith("<wbr>—<wbr>'"))
+                {
+                    lineNew = lineNew[..^12] + "—'";
+                }
+            }
+            // do these last, so special formatting cases can be maintained
+            if (lineNew.Contains("&#0;")) lineNew = lineNew.Replace("&#0;", "");
+            if (lineNew.Contains("&#45;")) lineNew = lineNew.Replace("&#45;", "-");
+            if (lineNew.Contains("&#32;")) lineNew = lineNew.Replace("&#32;", " ");
             return lineNew;
         }
 
