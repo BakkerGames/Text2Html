@@ -250,26 +250,29 @@ namespace Text2Html
                         bool needImage = false;
                         string fromFilename = Path.Combine(_basePath, obj.ImageFilename);
                         string toFilename = Path.Combine(pathname, _htmlFolder, obj.NewImageFilename);
-                        if (File.Exists(fromFilename))
+                        if (!File.Exists(fromFilename))
                         {
-                            if (File.Exists(toFilename))
-                            {
-                                FileInfo fromInfo = new(fromFilename);
-                                FileInfo toInfo = new(toFilename);
-                                if (fromInfo.Length != toInfo.Length)
-                                {
-                                    needImage = true;
-                                }
-                            }
-                            else
+                            Console.WriteLine($"File not found: {fromFilename}");
+                            return true;
+                        }
+                        if (File.Exists(toFilename))
+                        {
+                            FileInfo fromInfo = new(fromFilename);
+                            FileInfo toInfo = new(toFilename);
+                            if (fromInfo.Length != toInfo.Length)
                             {
                                 needImage = true;
+                                File.Delete(toFilename);
                             }
-                            if (needImage)
-                            {
-                                File.Copy(fromFilename, toFilename);
-                                changed = true;
-                            }
+                        }
+                        else
+                        {
+                            needImage = true;
+                        }
+                        if (needImage)
+                        {
+                            File.Copy(fromFilename, toFilename);
+                            changed = true;
                         }
                     }
                 }
